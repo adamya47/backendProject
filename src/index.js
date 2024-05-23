@@ -1,12 +1,19 @@
-import { DB_NAME } from "./constants";
-import mongoose from "mongoose";
 import express from "express"
-import { connectDB } from "./db";
+import { connectDB } from "./db/index.js";
+
 
 const app=express()
 
 
-connectDB()
+//as connectDB is asynchrounous to vo promise return krta hai isliye we can use then()
+
+connectDB().then(()=>{
+    app.listen(process.env.PORT || 8000,()=>{
+        console.log("Server is listening to Port:",process.env.PORT)
+    })
+}).catch((error)=>{
+ console.log("MongoDB connection Failed!!",error)
+})
 
 
 

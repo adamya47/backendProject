@@ -1,4 +1,4 @@
-import { DB_NAME } from "../constants";
+import { DB_NAME } from "../constants.js";
 import mongoose from "mongoose";
 
  //APPROCH 2 FOR DB CONNECT 
@@ -15,7 +15,7 @@ try {
 
 
 } catch (error) {
-    console.log("DB CONNECTION ERROR",error)
+    console.log("DB CONNECTION FAILED",error)
     process.exit(1)
 }
 
