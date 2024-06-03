@@ -34,7 +34,7 @@ this.data=null //in data, additional data related to error is stored
 
 //The stack property is a string that represents the point in the code at which the error was instantiated.
 if(stack){
-    this.stack-stack
+    this.stack=stack
 }else{
     Error.captureStackTrace(this,this.constructor) // This method allows you to manually capture the stack trace at the point where it's called
     /*Error.captureStackTrace(targetObject[, constructorOpt])

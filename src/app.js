@@ -1,4 +1,4 @@
-import express from "express"
+import express from "express";
 import cookieParser from "cookie-parser"
 import cors from "cors"
 
@@ -34,5 +34,16 @@ app.use(express.static("public"))  //it is used to store files or folders in ser
 
 app.use(cookieParser()) //used to set or access cookies
 
+//routes import 
+
+import userRouter from "./routes/user.routes.js";
+
+//routes declaration
+//Use app.use when you want to apply middleware functions or mount a router to handle multiple HTTP methods for a specific path.
+
+//Use app.get (or other HTTP method-specific functions like app.post, app.put, app.delete) when you want to handle a specific type of HTTP request
+// to a particular path.
+
+app.use("/api/v1/users",userRouter) 
 
 export default app

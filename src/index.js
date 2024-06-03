@@ -1,8 +1,8 @@
+import 'dotenv/config'
 import express from "express"
 import { connectDB } from "./db/index.js";
+import app from './app.js';
 
-
-const app=express()
 
 
 //as connectDB is asynchrounous to vo promise return krta hai isliye we can use then()

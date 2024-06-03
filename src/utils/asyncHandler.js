@@ -1,9 +1,10 @@
 //approch 2 using promise
 
 
-const asyncHandler=(fn)=>{
-    return (req,res,next)=>{
-        Promise.resolve(fn(req,res,next)).catch((error)=>next(error))
+const asyncHandler = (requestHandler) => {
+    //return krna bhi zaruri cause humne input hi function lia aur isme return bhi function krte hain agr nhi kia toh issue hota
+    return (req, res, next) => {
+        Promise.resolve(requestHandler(req, res, next)).catch((err) => next(err))
     }
 }
 
