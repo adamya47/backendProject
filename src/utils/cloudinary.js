@@ -10,7 +10,7 @@ cloudinary.config({
 });
 
 
-//GOAL HERE - the file is already on our local server ,from there we have to take local path and uplaod file to cloudinary and also delete it
+//GOAL HERE - the file is already on our local server ,from there we have to take local path and uplOAd file to cloudinary and also delete it
 //from local server
 
 //hum simply copy paste bhi kr sakte hai cod form website but the thing is hum proper unlink bhi karenge after upload,try catch se proper error 
@@ -21,15 +21,15 @@ try {
     if(!localFilePath)return null;//agr file path dia hi  nahi
     
     //upload file
-    const response=await cloudinary.uploader.upload(localFilePath,{resource_type:auto}) ;
+    const response=await cloudinary.uploader.upload(localFilePath,{resource_type:"auto"}) ;
     console.log("File uploaded on cloudinary",response.url);
-    fs.unlinkSync(localFilePath); //there is an option fs.unlink() too but we want yeh hona hi hoona chahiye in code flow isliye yeh kia
+    fs.unlinkSync(localFilePath); //there is an option fs.unlink() too but we want yeh hona hi hoona chahiye in code flow isliye yeh kia,we dont that ki backrground mein hote rahe we want ki synchronously ho fir aage badhe hum
     return response;
     
 
 } catch (error) {
  
-    //agr error aa gaya toh delete hi krdo cause aaese hi rakhke koi fyda ni
+    //agr error aa gaya toh delete Bhi krdo cause aaese hi rakhke koi fyda ni
     fs.unlinkSync(localFilePath);
     return null;
     

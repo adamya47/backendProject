@@ -24,9 +24,8 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 const registerUser=asyncHandler(async (req,res)=>{
 
     // 1.
-      const {fullName,email,password,username}=req.body;
+      const {fullName,email,password,username}=req.body;//req.body se images/files nhi milti
 
-      
  //image files ke lia upload from multer used in router(concept in notes)
 
 
@@ -35,7 +34,7 @@ const registerUser=asyncHandler(async (req,res)=>{
 
 
 
- //2. .some()It returns a boolean value: true if at least one element passes the test, and false otherwise.
+ // 2.  .some() It returns a boolean value: true if at least one element passes the test, and false otherwise.
   
   if(
     [fullName,email,password,username].some((field)=>
@@ -57,7 +56,7 @@ const registerUser=asyncHandler(async (req,res)=>{
 
 
  
-                const existedUser= User.findOne({
+                const existedUser=await User.findOne({ //"await cause db is in another continent" 
                     $or:[{ email },{ username }]
                                     }) //$or Operator: This is a MongoDB logical operator that is used to perform a logical OR operation on an
                                        // array of one or more query expressions. 
@@ -69,10 +68,24 @@ if(existedUser){
 
 //4.
 //req.files is a multer method for accessing files 
+                                     
+ 
+const avatarLocalPath=req.files?.avatar?.[0]?.path; //avatar?.[0] vvimp step 
+                                                    //cause if we did only avatar[0]?. and then if we didnt send avatar file if would give 
+                                                    //"Cannot read properties of undefined" cause avatar array hota hi nahi toh avatar[0] kaise hoga so make a 
+                                                    //check of avatar? before doing avatar[0]
 
-const avatarLocalPath=req.files?.avatar[0]?.path;
+const coverImageLocalPath=req.files?.coverImage?.[0].path ;
 
-const coverImageLocalPath=req.files?.coverImage[0].path ;
+
+//traditional way to do that we are not opting it cause we fixed it with chaining but its good to know 
+
+// let coverImageLocalPath
+// console.log(coverImageLocalPath)
+// if(Array.isArray(req.files.coverImage) && req.files.coverImage.length>0 ){
+//   coverImageLocalPath=req.files.coverImage[0].path
+// }
+
 
 if(!avatarLocalPath){
     throw new ApiError(400,"Avatar File is required")
@@ -81,7 +94,11 @@ if(!avatarLocalPath){
 //5 study the response that cloudinary gives after uplaoding from theory ,we would use url out of that 
 
 const avatar=await uploadOnCloudinary(avatarLocalPath);
-const coverImage=await uploadOnCloudinary(coverImageLocalPath)
+const coverImage=await uploadOnCloudinary(coverImageLocalPath);
+
+
+
+
 
 //checking for avatar ki upload hogayi ya nahi
 if (!avatar) {
@@ -117,8 +134,6 @@ return res.status(201).json(
   //creating object of ApiResponse class 
     new ApiResponse(200,createdUser,"User Registered Successfully") //we could do .json({created user,status,}) but we have already defined structured response so thats why we are not doing that
 )
-
-
 
 })
 

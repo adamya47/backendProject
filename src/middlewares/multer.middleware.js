@@ -1,3 +1,4 @@
+
 import multer from "multer";
 
 const storage = multer.diskStorage({
@@ -11,7 +12,7 @@ const storage = multer.diskStorage({
     }
   })
   
-  export const upload = multer({ storage: storage }) //upload variable is now a middleware function that can be used to handle file uploads
+  export const upload = multer({ storage ,}) //upload variable is now a middleware function that can be used to handle file uploads
 
 
   /**

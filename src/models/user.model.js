@@ -119,8 +119,6 @@ export const User=mongoose.model("User",userSchema);
 
 
 
-
-
 /**
  bcrypt
  bcrypt.js is a JavaScript library commonly used for hashing passwords and ensuring secure storage and authentication of user credentials. 

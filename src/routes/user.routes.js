@@ -8,6 +8,7 @@ const router=Router();
 // Use upload.array() when you expect multiple files from a single field in the form.
 
 router.route("/register").post(
+  
     upload.fields([
     {name:"avatar", //front end mein bhi field ka name yahi rakhenge jo idhr rakha hai 
      maxCount:1
@@ -17,6 +18,9 @@ router.route("/register").post(
     }
 ])                     
     ,registerUser)
+
+
+
 /**
  router.route("/register").post(registerUser)
  post(handler): This specifies that the handler function registerUser should be called when a POST request is made to the /register route.
