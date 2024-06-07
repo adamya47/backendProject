@@ -86,7 +86,7 @@ userSchema.methods.isPasswordCorrect=async function(password){
 
 userSchema.methods.generateAccessToken=function(){
 //async await not  needed as it is very fast
-    //this will return jwt token
+    //this will return jwt token                
 return jwt.sign({
     //payload
     _id:this._id,
@@ -104,6 +104,7 @@ userSchema.methods.generateRefreshToken=function(){
         _id:this._id, //isme payload kaam dete 
     },process.env.REFRESH_TOKEN_SECRET,process.env.REFRESH_TOKEN_EXPIRY)
     }
+
 
 
 export const User=mongoose.model("User",userSchema);

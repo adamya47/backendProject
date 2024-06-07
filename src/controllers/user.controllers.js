@@ -4,7 +4,37 @@ import { User } from "../models/user.model.js";
 import uploadOnCloudinary from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
-//steps to do to register user 
+
+
+//making a seperate function for generating access and refresh token because yeh boht baar use hoga ,and we dont want to repeat things again and again
+const generateAccessAndRefreshToken=async(userId)=>{
+  try {
+
+const user=await User.findById(userId);
+const accessToken=user.generateAccessToken();
+const refreshToken=user.generateRefreshToken();
+
+//user object ke andr dalre 
+user.refreshToken=refreshToken //refresh token saved but access token is not(whole explanation at bottom )
+
+//ab saving it in db 
+await user.save({ validateBeforeSave: false })//cause normally save kare toh vo model mein required cheezen like password rmail etc dobara mangega aur hum abhi vo sab nahi dena chahte isliye validtion false krdi
+
+return {accessToken,refreshToken}
+
+    
+  } 
+  catch (error) {
+    throw new ApiError(500, "Something went wrong while generating referesh and access token")
+  }
+}
+
+
+
+
+const registerUser=asyncHandler(async (req,res)=>{
+
+  //steps to do to register user 
     //1.get user info (email,username,password,fullName) see user model to know that
     //2.validation-(idhr we will check if empty to nahi) can do more validations too
     //3.check if user already exist(will do with email and username) (can do with one only too)
@@ -19,9 +49,6 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 
     /**Passwords and refresh tokens are sensitive pieces of information. If these are exposed, they could be misused by malicious actors to gain
       unauthorized access to user accounts or impersonate users. */
-
-
-const registerUser=asyncHandler(async (req,res)=>{
 
     // 1.
       const {fullName,email,password,username}=req.body;//req.body se images/files nhi milti
@@ -138,8 +165,129 @@ return res.status(201).json(
 })
 
 
+const loginUser=asyncHandler(async (req,res)=>{
+
+  //1.req body
+  //2.username or email
+  //3.find the user and check if you found it
+  //4.check password
+  //5.access and refresh token 
+  //6.send cookie(tokens send by cookies ,we send secure cookies)
+
+
+ //1.
+  const{email,username,password}=req.body;
+
+  //2.
+ if(!(username || email)){        //we checking ki email ya username mein se ek ho bs agr dono ni honnge to it will be if(!false)=>if(true) aur error throw kr dega
+  throw new ApiError(400,"username or email is required")
+ }
+
+ //3.
+ //this will return the first/oneTh user which it finds with matching email or username
+ const user=await User.findOne({
+  $or:[{username},{email}]
+ })
+
+ 
+ if(!user){
+  throw new ApiError(404,"User does not exist");
+ }
+
+ //4
+
+ const isPasswordValid= await user.isPasswordCorrect(password)//we use User for mongoDb methods like findone,updateone and user for own created methods like isPasswordCorrect,generate access token
+
+if(!isPasswordValid){
+  throw new ApiError(401,"Please enter the correct password")
+}
+
+//5//tokens cookies mein bhej denge
+const {accessToken,refreshToken}=await generateAccessAndRefreshToken(user._id) //MIND CONCEPT-dekh yeh iss function mein await vagera use hore toh time lag sakta hai ab to make sure ki yeh time pe  ho aur fir hi aage jae isliye use await 
+
+//see ab #3 wale user ke refernece mein unwanted cheezen like password hai 
+//aur refresh token nahi hai uss wale refernece mein refrenceToken empty hai  ,though  db mein stored hai but 'user' wale refrence mein nahi hai cause vo refrence humne pehle lia tha generateaAccessAndRefresh wale function call krne se pehle
+//now we got two options to cater this issue 1.user mein hi update krdo by user.refreshToken(yeh less expensive )
+//2. naya reference  of User le aao from database ,usme refreshToken hoga cause abhi db mein refresh token hai toh hum naya refernce lenge toh usme bhi hoga
+//2nd one is more expensive toh ab vo tumpe depend krta ki kya afford krsakte ho ya nahi,vo khud dekh lena
+
+//ALLL CLARITY KEH SATH(AIM AND ISSUE)
+//AIM -We doing this step to remove things like passoword and refrenceToken. from Our user ref that we will return
+//DOUBT CLEARNING STEP--- yeh referneceToken hume bhejna nahi THEEK HAI.aur #3 wale mein hai bhi nahi 
+//but hum passowrd remove krna chate toh uske lia we made call for another user ref but when we made this call toh usme refreshToken hoga.YES isme hoga refresh token aur #3 wale mein nahi tha, so usko hata dia from call 
+//we could easily remove passowrd from #3 user too by delete user.passoword. but chalo select() use krna seekh lia
+
+const loggedInUser=await User.findById(user._id).select("-password -refreshToken");//though humne refresh token remove hi kr dia here, toh kuch point ni ,still we learned concept here value that
+//hum return karenge yeh as a resposne aur hum nahi chahte  password aur refreshToken dena here 
+
+
+
+//6 COOKIES 
+//for cookies we have to configure options too
+
+const options={//by default cookies are modifiable at both front and backend ,but after this the are modifyable only at backend ,and frontend pe can be seen only 
+  httpOnly:true,//When this option is set to true, the cookie is only accessible via HTTP(S) requests and is not accessible via JavaScript running in the browser,prevents from XSS attacks
+  secure:true   //cookie is only sent over secure HTTPS connections, protecting it from being intercepted(access) during transmission. This helps prevent man-in-the-middle attacks.
+}
+
+return res.status(200).cookie("accessToken",accessToken,options)
+          .cookie("refreshToken",refreshToken,options)
+          .json(
+            new ApiResponse(
+              200,
+              {
+              user:loggedInUser,
+              accessToken,
+              refreshToken
+              },
+             "User Logged in Successfully"
+
+            )
+            //we returned tokens both in through cookies and json and both serve differenct purpose
+            /*
+            1.THROUGH COOKIES 
+            Automatic Handling: Browsers automatically handle cookies, sending them with each HTTP request to the domain that set them. This means that you don't need to manually include the tokens in the headers of every request.
+Secure Storage: By using options like httpOnly and secure, cookies can be securely stored and protected from client-side scripts, enhancing security.
+             
+2.THROUGH JSON
+Flexibility for Different Clients:
+
+Mobile Apps: Cookies are browser-specific,While cookies are commonly used for web applications, they are not as applicable to native mobile apps 
+Mobile applications or single-page applications (SPAs) might prefer to store tokens in memory or local storage rather than cookies. Returning tokens in JSON allows these clients to handle them in a way that best suits their needs.
+Custom Storage: Some applications may have custom storage requirements or strategies that are better handled with tokens stored outside of cookies.
+             
+Conclusion
+Returning tokens both in cookies and in the JSON response ensures that you cover a wide range of client requirements and use cases, providing a 
+flexible, secure, and user-friendly authentication mechanism. This dual approach helps in creating a more robust and versatile system that can 
+accommodate various client implementations.
+             */
+          )
+
+
+
+
+})
 
 
 
 
 export {registerUser}
+
+/**
+ 
+Refresh token saved but access token is not because -
+
+short Lifespan of Access Tokens:
+
+Access tokens are typically short-lived, often expiring within minutes to an hour. Storing them in the database is not practical because they would need to be frequently updated.
+Reduced Attack Surface:
+
+Access tokens, if compromised, provide direct access to resources. By not storing them, you reduce the risk of them being leaked or accessed by unauthorized parties.
+Stateless Authentication:
+
+Access tokens are usually used in stateless authentication systems (e.g., JWTs). They are self-contained and can be verified without a database 
+lookup. This allows the system to scale better and reduces the load on the database.
+
+When we say that access tokens, particularly JSON Web Tokens (JWTs), are "self-contained," we mean that they carry all the information needed 
+for authentication within the token itself. This allows the server to verify and understand the token without needing to query a database or any external storage. 
+ */
