@@ -3,7 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
 import uploadOnCloudinary from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-
+import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 
 //making a seperate function for generating access and refresh token because yeh boht baar use hoga ,and we dont want to repeat things again and again
@@ -229,8 +229,8 @@ const options={//by default cookies are modifiable at both front and backend ,bu
   httpOnly:true,//When this option is set to true, the cookie is only accessible via HTTP(S) requests and is not accessible via JavaScript running in the browser,prevents from XSS attacks
   secure:true   //cookie is only sent over secure HTTPS connections, protecting it from being intercepted(access) during transmission. This helps prevent man-in-the-middle attacks.
 }
-
-return res.status(200).cookie("accessToken",accessToken,options)
+                          //.cookie(key,value,option)
+return res.status(200).cookie("accessToken",accessToken,options) 
           .cookie("refreshToken",refreshToken,options)
           .json(
             new ApiResponse(
@@ -242,8 +242,7 @@ return res.status(200).cookie("accessToken",accessToken,options)
               },
              "User Logged in Successfully"
 
-            )
-            //we returned tokens both in through cookies and json and both serve differenct purpose
+              //we returned tokens both in through cookies and json and both serve differenct purpose
             /*
             1.THROUGH COOKIES 
             Automatic Handling: Browsers automatically handle cookies, sending them with each HTTP request to the domain that set them. This means that you don't need to manually include the tokens in the headers of every request.
@@ -261,9 +260,43 @@ Returning tokens both in cookies and in the JSON response ensures that you cover
 flexible, secure, and user-friendly authentication mechanism. This dual approach helps in creating a more robust and versatile system that can 
 accommodate various client implementations.
              */
+
+            )
           )
+           
+          
 
 
+
+
+})
+
+const logoutUser=asyncHandler(async(req,res)=>{
+
+         //we used findbyidandUpdate here so that seperately pehle reference lo user ki ,fir usme refresh token remove karo ,fir save karo aur save me validateBeforeSave wala false karo ,uss sab se ache seedha yeh use kar lo
+  await User.findByIdAndUpdate(req.user._id,{
+
+         $set:{
+                  refreshToken:undefined
+           }
+                                      },
+  
+  {
+    new:true   //what this does is ,if it is true it will return updated document rather than the old document
+  }
+
+)
+
+const options={
+  httpOnly:true,
+  secure:true
+}
+
+return res
+.status(200)
+.clearCookie("accessToken",options)
+.clearCookie("refreshToken",options)
+.json(new ApiResponse(200,{},"User Logged out Successfully"))
 
 
 })
@@ -271,7 +304,7 @@ accommodate various client implementations.
 
 
 
-export {registerUser}
+export {registerUser,loginUser,logoutUser}
 
 /**
  
