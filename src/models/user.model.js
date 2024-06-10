@@ -88,12 +88,20 @@ userSchema.methods.generateAccessToken=function(){
 //async await not  needed as it is very fast
     //this will return jwt token                
 return jwt.sign({
+
     //payload
     _id:this._id,
     email:this.email,
     fullName:this.fullName,
     username:this.username,
-},process.env.ACCESS_TOKEN_SECRET,process.env.ACCESS_TOKEN_EXPIRY)
+},
+process.env.ACCESS_TOKEN_SECRET
+,
+{
+    expiresIn: process.env.ACCESS_TOKEN_EXPIRY
+
+}
+)
 }
 
 userSchema.methods.generateRefreshToken=function(){
@@ -102,7 +110,12 @@ userSchema.methods.generateRefreshToken=function(){
     return jwt.sign({
         //payload
         _id:this._id, //isme payload kaam dete 
-    },process.env.REFRESH_TOKEN_SECRET,process.env.REFRESH_TOKEN_EXPIRY)
+    },
+    process.env.REFRESH_TOKEN_SECRET
+    ,{
+        expiresIn: process.env.REFRESH_TOKEN_EXPIRY
+    
+    })
     }
 
 

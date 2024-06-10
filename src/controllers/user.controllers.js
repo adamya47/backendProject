@@ -3,7 +3,8 @@ import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
 import uploadOnCloudinary from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { verifyJWT } from "../middlewares/auth.middleware.js";
+import jwt from "jsonwebtoken"
+import { upload } from "../middlewares/multer.middleware.js";
 
 
 //making a seperate function for generating access and refresh token because yeh boht baar use hoga ,and we dont want to repeat things again and again
@@ -25,6 +26,8 @@ return {accessToken,refreshToken}
     
   } 
   catch (error) {
+    
+    
     throw new ApiError(500, "Something went wrong while generating referesh and access token")
   }
 }
@@ -270,7 +273,7 @@ accommodate various client implementations.
 
 
 })
-
+//logout concepts and thinking all explained in notes MUST VISIT ,DONT PROCEED WITHOUT UNDERSTANDING THAT
 const logoutUser=asyncHandler(async(req,res)=>{
 
          //we used findbyidandUpdate here so that seperately pehle reference lo user ki ,fir usme refresh token remove karo ,fir save karo aur save me validateBeforeSave wala false karo ,uss sab se ache seedha yeh use kar lo
@@ -302,9 +305,244 @@ return res
 })
 
 
+//study all the concepts in notes must,study full story #16 (must)
+//iska end point bhi banaya hai route mein
+//though our main gold here is we  are saying that refresh the access token but at the end isme hum dono tokens hi refresh kr dete hain dobara generate krke
+const refreshAccessToken=asyncHandler(async(req,res)=>{
+ 
+const incomingRefeshToken=req.cookies.refreshToken || req.body.refreshToken //(using req.body for app case) ,can also use header too ,uska alag scene ,leave it for now
+
+if(!incomingRefeshToken){
+  throw new ApiError(401,"unauthorized request")
+}
+try {
+
+  const decodedToken= jwt.verify(incomingRefeshToken,process.env.REFRESH_TOKEN_SECRET);
 
 
-export {registerUser,loginUser,logoutUser}
+  // if(!decodedToken){  //no needed to do this cause jwt will throw error if any issue
+  //   throw new ApiError(401,"Refresh Token unverified")
+  // }
+
+  const user=await User.findById(decodedToken._id)
+
+  if(!user){
+    throw new ApiError(401,"Invalid Refresh Token")
+  }
+ 
+  //till now its cleared that incoming refreshToken is valid ,now we have to check that incoming refresh token is same as that in db
+
+ if(incomingRefeshToken !== user?.refreshToken){
+  throw new ApiError(401,"Refresh token is expired or used")
+ }
+
+ //ab yeh done ki ,refresh token is correct now generate new access and refresh token
+
+const{accessToken,refreshToken}=await generateAccessAndRefreshToken(user._id)
+
+user.refreshToken=refreshToken;
+
+await user.save({validateBeforeSave:false})
+
+const options={
+  httpOnly:true,
+  secure:true
+}
+return res.status(200).cookie("accessToken",accessToken,options)
+         .cookie("refreshToken",refreshToken,options)
+         .json(
+          new ApiResponse(200,
+            {accessToken,
+            refreshToken}
+            ,
+            "Access token refreshed"
+          )
+         )
+
+} catch (error) {
+  throw new ApiError(401,error?.message || "Invalid refresh token")
+}
+
+
+
+
+})
+
+
+// #17 writing some update controllers for user
+
+const changeCurrentPassword=asyncHandler(async(req,res)=>{
+
+const{oldPassword,newPassword}=req.body;
+
+//concept here we will use our auth middleware toh req.user hoga humare pass for user access
+
+const user=await User.findById(req.user?._id)
+
+//we are using our own created method to check if entered password match with the password in db
+const isPassowordCorrect=await user.isPassowordCorrect(oldPassword)//this will return true or false
+
+//we didnt do if(oldPassword !== user.password)to check  cause user.password is stored in hashed form using bcrypt aur entered passowrd is not,toh iss tareeka se vo match hi nahi honge kabhi
+
+
+if(!isPassowordCorrect){
+  throw new ApiError(400,"Invalid old password")
+}
+
+user.password=newPassword;
+await user.save({validateBeforeSave:false})//save hone se pehle pre("save") wala middleware bhi call hoga that we wrote in user.model.js ,it will store the new password in hashed form in db
+
+return res.status(200).json(new ApiResponse(200,{},"Password Changed successfully"))
+
+
+})
+
+const getCurrentUser=asyncHandler(async(req,res)=>{
+
+  //seedha middleware daal denge jisse req.user mil jaega aur fir vahi toh hai humare current user ,ussi kor return kr denge
+
+  return res
+  .status(200)
+  .json(new ApiResponse(
+     
+    200,req.user,"User fetched successfully"
+  
+  ))
+
+
+})
+
+
+//PRO TIP- try to makes seperate controllers for updating files,its more convinent and production level thing 
+
+
+const updateAccountDetails=asyncHandler(async(req,res)=>{
+
+const {fullName,email}=req.body //its upto  you what you want to allow user to change ,no fixed rule
+
+if(!fullName || !email){
+  throw new ApiError(400,"All fields are required")
+}
+
+const  user=await User.findByIdAndUpdate(
+  req.body._id,
+   
+  {
+    $set:{
+      fullName:fullName,
+      email
+    }
+  },
+  {new:true}//this will return updated 
+
+
+
+).select("-password")
+
+return res.status(200).json(
+  new ApiResponse(200,user,"Account details updated successfully")
+)
+
+
+});
+
+
+
+
+//now writing controllers for updating files 
+
+//two middleware will be used here ,
+//1. multer because ussi se hi  new file upload hogi aur uska  access milega (req.file) 
+//2. auth cause only authorized users can do this 
+
+const updateUserAvatar=asyncHandler(async(req,res)=>{
+
+const avatarLocalPath=req.file?.path; // we didnt do req.files like we did while registering because usme we expected multiple files ,here we expect one file only
+
+if(!avatarLocalPath){
+  throw new ApiError(400,"Avatar file is missing")
+}
+//TODO: delete old image assignment 
+
+const avatar=await uploadOnCloudinary(avatarLocalPath)
+
+if(!avatar.url){
+  throw new ApiError(400,"Error while uploading on avatar")
+}
+
+//cause we are using auth middleware too we get access of req.user
+
+const user=await User.findByIdAndUpdate(
+  req.user?._id,
+
+  {
+    $set:{
+      avatar:avatar.url
+    }
+  },
+
+  {
+    new:true
+  }
+).select("-password")
+
+
+
+return res.status(200).json(
+  new ApiResponse(200,user,"Avatar Image updated successfully")
+)
+
+})
+
+const updateUserCoverImage=asyncHandler(async(req,res)=>{
+
+  const coverImageLocalPath=req.file?.path; 
+  
+  if(!coverImageLocalPath){
+    throw new ApiError(400,"Cover Image file is missing")
+  }
+  //TODO DELETE OLD IMAGE
+  const coverImage=await uploadOnCloudinary(coverImageLocalPath)
+  
+  if(!coverImage.url){
+    throw new ApiError(400,"Error while uploading on Cover Image")
+  }
+  
+  
+  
+  const user=await User.findByIdAndUpdate(
+    req.user?._id,
+  
+    {
+      $set:{
+        coverImage:coverImage.url
+      }
+    },
+  
+    {
+      new:true
+    }
+  ).select("-password")
+  
+  
+  
+  return res.status(200)
+  .json(
+    new ApiResponse(200,user,"Cover Image updated successfully")
+  )
+  
+  })
+  
+
+
+
+
+
+
+export {registerUser,loginUser,logoutUser,
+  refreshAccessToken,changeCurrentPassword,
+  getCurrentUser,updateAccountDetails,updateUserAvatar,
+   updateUserCoverImage}
 
 /**
  

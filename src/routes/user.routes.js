@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { loginUser, logoutUser, registerUser } from "../controllers/user.controllers.js";
+import { loginUser, logoutUser, registerUser,refreshAccessToken } from "../controllers/user.controllers.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
+
 const router=Router();
 
 // Use upload.fields() when you expect multiple files from different fields in the form. Each field can have a different name and a different
@@ -28,10 +29,10 @@ registerUser: This is the handler function that will be executed when a POST req
 router.route("/login").post(loginUser)
 
 
-//secured routes ,(which require the user to be authorized before entering)//here authorization done by verifyJWT from custom auth.middleware.js
+//Secured routes ,(which require the user to be authorized before entering)//here authorization done by verifyJWT from custom auth.middleware.js
 
 router.route("/logout").post(verifyJWT,logoutUser)
-
+router.route("/refresh-token").post(refreshAccessToken)//we didnt used verifyJWT custom middleware here cause idhr humne in refreshAccesstoken mein uska kaam khud hi kr dia hai (cookie se token lena fir verify aur user access everything)
 
 
 
