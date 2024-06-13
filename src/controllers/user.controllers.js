@@ -462,7 +462,7 @@ const avatarLocalPath=req.file?.path; // we didnt do req.files like we did while
 if(!avatarLocalPath){
   throw new ApiError(400,"Avatar file is missing")
 }
-//TODO: delete old image assignment 
+//TODO: delete old image from cloudinary assignment 
 
 const avatar=await uploadOnCloudinary(avatarLocalPath)
 
@@ -534,6 +534,126 @@ const updateUserCoverImage=asyncHandler(async(req,res)=>{
   })
   
 
+  const getUserChannelProfile=asyncHandler(async(req,res)=>{
+ //GOAL -When we visit a user profile like in youtube ,we are able to see his/her Subscribers and channels subscribed by him,
+ //his usernam ,email,profile,coverImage //we have to return all this here 
+//major concepts and learning is in obtaining subscribers count and no of channels he/she is subscribed too
+
+//ALSO WHETHER WE ARE SUBSCRIBED TO THE PROFILE OR NOT USKE LIA BHI EK INDICATOR TRUE FALSE DENA ZARURI
+
+
+const {username}=req.params
+
+if(!username){
+  throw new ApiError(400,"username is missing")
+}
+               //await cause db call and "db is in another continent"
+
+const channel= await User.aggregate( [
+
+
+{
+  $match:{username:username}//we will get "one" document  from this that will have the same username as obtained from url param ,all the remaing will documents will be filtered out here 
+}
+,
+{
+//from this we will obtain a field called subscribers whicj will be an array of objects,objects are documents of all the subsrcibers of the user profile we visited ,the document will be of Subscription model (it would contain channel,subscriber field)
+
+  $lookup:{
+    from:"subscriptions",//cause we know mongo db lower case and plural mein save krta toh "Subscription" model ko usne "subscriptions" krdia
+    localField:"_id",
+    foreignField:"channel",
+    as:"subscribers"
+  }
+
+},{
+  //from this we will obtain a field called subscribedTo which will be an array of objects,objects are documents of all the channels THE userProfile that we visited is subscribed to
+
+
+$lookup:{
+  from:"subscriptions",
+  localField:"_id",
+  foreignField:"subscriber",
+  as:"subscribedTo"
+
+
+}
+
+},
+//documents to mil gayi but we want number toh uske lia we do this
+//also a indictor for whether the profile we visied ,are we subscribed to it or not
+
+{
+
+  $addFields:{
+
+    subcribersCount:{
+      $size:"$subscribers" //it will calculate the size of of array and it is equal to subscriber count
+    },
+    channelsSubscribedToCount:{
+      $size:"$subscribedTo"
+    }
+    ,
+    isSubscribed :{
+
+      $cond:{   
+                //req.user cause authorized honge toh we have access to it 
+        if:{$in:[req.user?._id,"$subscribers.subscriber"]},// VVIMP : what $in does here is it checks ,if humari id match hori with any document ,NOT JUST MATCH HORI BUT IF  humari _id match hori with the subscriber key of subscribers field in any document,jisse hume yeh pta chale ki hum subscribed hai ya nahi to the profile we are visiting to  (//thought- subscribers field is containg document having Subscription model toh usme channel aur subscriber key toh hongi) 
+
+        then:true,
+
+        else:false
+      }
+
+    }
+
+
+  }
+}
+  ,
+  
+  {
+
+    $project:{
+
+   fullName :1,
+   email:1,
+   username:1,
+   avatar:1,
+   coverImage:1,
+   subcribersCount:1,
+   channelsSubscribedToCount:1,
+   isSubscribed :1
+
+
+    }
+  
+    //_id by default included hi rehti hai toh not needed 
+//now aggregate method at last return an array of objects containg objects of all the documents
+//here humane pass ek hi object hoga cause ek hi document hogi of the profile we visited
+
+}
+
+
+])
+
+if(!channel?.length){
+  throw new ApiError(400,"Channel does not exists")
+}
+
+
+return res.status(200).json(
+  new ApiResponse(200,
+    channel[0], //cause aggregate will return array of objects aur humare is case mein toh ek hi hoga cause sirf channel ki profile wala document only
+    "User channel fetched successfully"
+  )
+)
+
+
+
+
+
+  })
 
 
 
@@ -542,7 +662,7 @@ const updateUserCoverImage=asyncHandler(async(req,res)=>{
 export {registerUser,loginUser,logoutUser,
   refreshAccessToken,changeCurrentPassword,
   getCurrentUser,updateAccountDetails,updateUserAvatar,
-   updateUserCoverImage}
+   updateUserCoverImage,getUserChannelProfile}
 
 /**
  
