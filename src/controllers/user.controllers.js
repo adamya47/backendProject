@@ -434,6 +434,7 @@ const  user=await User.findByIdAndUpdate(
       email
     }
   },
+  
   {new:true}//this will return updated 
 
 
