@@ -5,6 +5,7 @@ import uploadOnCloudinary from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken"
 import { upload } from "../middlewares/multer.middleware.js";
+import mongoose, { Mongoose } from "mongoose";
 
 
 //making a seperate function for generating access and refresh token because yeh boht baar use hoga ,and we dont want to repeat things again and again
@@ -553,11 +554,11 @@ const channel= await User.aggregate( [
 
 
 {
-  $match:{username:username}//we will get "one" document  from this that will have the same username as obtained from url param ,all the remaing will documents will be filtered out here 
+  $match:{username:username}//all documents will get filtered and we will get one document from this that will have the same username as obtained from url param ,all the remaing will documents will be filtered out here 
 }
 ,
 {
-//from this we will obtain a field called subscribers whicj will be an array of objects,objects are documents of all the subsrcibers of the user profile we visited ,the document will be of Subscription model (it would contain channel,subscriber field)
+//from this we will obtain a field called subscribers which will be an array of objects,objects are documents of all the subsrcibers of the user profile we visited ,the document will be of Subscription model (it would contain channel,subscriber field)
 
   $lookup:{
     from:"subscriptions",//cause we know mongo db lower case and plural mein save krta toh "Subscription" model ko usne "subscriptions" krdia
@@ -615,6 +616,7 @@ $lookup:{
   {
 
     $project:{
+      //study project concepts from notes
 
    fullName :1,
    email:1,
@@ -656,13 +658,89 @@ return res.status(200).json(
   })
 
 
+const getWatchHistory=asyncHandler(async(req,res)=>{
 
+  const user=await User.aggregate([
+
+//stage 1
+{
+
+$match:{
+  _id: new mongoose.Types.ObjectId(req.user._id)
+
+}//see isme we obtained single document of user with match id
+
+},
+
+//stage 2
+
+{ //ab us single document ki watchhistory pe karre kaam
+
+  $lookup:{
+    from:"videos",
+    localField:"watchHistory",
+    foreignField:"_id",
+    as:"watchHistory",//now adding subpipeline to add owner info
+    //ab we obtained all documents of videos in watchHistory but uss doument me no owner info ,to do that "FOR EACH" video document that in each video document there should be owner info we wirte sub-pipeline
+   pipeline:[
+
+
+
+    {
+
+      $lookup:{//abhi local is video and foreign is user
+        from:"users",
+        localField:"owner",
+        foreignField:"_id",
+        as:"owner",//we obtained all the info about owner from user model 
+
+
+        //we dont want to give include all owner info (matab owner jo user bhi hai uski info ki baat) , we just want few things ,for that isme hi sub-pipeline ek aur alga di
+        pipeline:[ //**  
+          {
+            $project:{
+              fullName:1,
+              username:1,
+              avatar:1
+            }
+          }
+        ]
+      }
+    }
+
+    // , YEH project wala  scene agr yahan lagate matbab bahar wali sub pipeline wale array mein toh bhi hota ya nahi check try krke
+  ,{
+    //doing this so that hame array ni seedha object mile
+    $addFields:{
+      //overwirte kar rahe owner field ko hi so that usme array containg object ke bajae sirf object rahe
+      owner: { 
+            $first:"$owner"
+      }
+
+    }
+  }
+
+   ]
+
+  }
+
+}
+
+
+  ])
+
+  return res.status(200)
+  .json( new ApiResponse(200,user[0].watchHistory,"Watch history fetched successfully"))
+
+
+})
 
 
 export {registerUser,loginUser,logoutUser,
   refreshAccessToken,changeCurrentPassword,
   getCurrentUser,updateAccountDetails,updateUserAvatar,
-   updateUserCoverImage,getUserChannelProfile}
+   updateUserCoverImage,getUserChannelProfile,
+  getWatchHistory}
 
 /**
  
