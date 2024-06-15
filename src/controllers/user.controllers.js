@@ -280,9 +280,9 @@ const logoutUser=asyncHandler(async(req,res)=>{
          //we used findbyidandUpdate here so that seperately pehle reference lo user ki ,fir usme refresh token remove karo ,fir save karo aur save me validateBeforeSave wala false karo ,uss sab se ache seedha yeh use kar lo
   await User.findByIdAndUpdate(req.user._id,{
 
-         $set:{
-                  refreshToken:undefined
-           }
+         $unset:{
+                  refreshToken:1 //this will remove the field from document ,we can also do {refreshToken: ""} //same effect
+           }                      // we want to add field we can use $set
                                       },
   
   {

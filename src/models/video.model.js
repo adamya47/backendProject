@@ -2,7 +2,7 @@ import mongoose,{Schema} from "mongoose";
 
 
 //refer npm docs to know how to establish mongoose Aggregate paginate
-const mongooseAggregatePaginate = require("mongoose-aggregate-paginate-v2");
+const mongooseAggregatePaginate = require("mongoose-aggregate-paginate-v2"); //cause videos boht sari ho sakti hai aur sari toh user ko ek sath de nahi sakte thodi thodi krke denge
 
 const videoSchema=new Schema({
     videoFile: {
