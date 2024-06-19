@@ -37,7 +37,7 @@ app.use(cookieParser()) //used to set or access cookies
 //routes import 
 
 import userRouter from "./routes/user.routes.js";
-
+import videoRouter from "./routes/video.routes.js";
 //routes declaration
 //Use app.use when you want to apply middleware functions or mount a router to handle multiple HTTP methods for a specific path.
 
@@ -45,5 +45,7 @@ import userRouter from "./routes/user.routes.js";
 // to a particular path.
 
 app.use("/api/v1/users",userRouter) 
+
+app.use("/api/v1/videos",videoRouter)
 
 export default app

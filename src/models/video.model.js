@@ -2,7 +2,8 @@ import mongoose,{Schema} from "mongoose";
 
 
 //refer npm docs to know how to establish mongoose Aggregate paginate
-const mongooseAggregatePaginate = require("mongoose-aggregate-paginate-v2"); //cause videos boht sari ho sakti hai aur sari toh user ko ek sath de nahi sakte thodi thodi krke denge
+import aggregatePaginate from "mongoose-aggregate-paginate-v2"; //cause videos boht sari ho sakti hai aur sari toh user ko ek sath de nahi sakte thodi thodi krke denge
+//dont use "require" wala syntax cause hum module/ESM js use kr rahe
 
 const videoSchema=new Schema({
     videoFile: {
@@ -40,7 +41,7 @@ const videoSchema=new Schema({
 
       })
  
-videoSchema.plugin(mongooseAggregatePaginate); //plugin used to add khud ke plugin ,aur yeh aggregate paginate thoda baad mein aaya hai in mongoose
+videoSchema.plugin(aggregatePaginate); //plugin used to add khud ke plugin ,aur yeh aggregate paginate thoda baad mein aaya hai in mongoose
                                                 //isliye we use .plugin() hook
 
 export const Video=mongoose.model("Video",videoSchema)
