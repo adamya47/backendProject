@@ -10,6 +10,8 @@ cloudinary.config({
 });
 
 
+
+
 //GOAL HERE - the file is already on our local server ,from there we have to take local path and uplOAd file to cloudinary and also delete it
 //from local server
 
@@ -35,6 +37,15 @@ try {
     
 }
 
+}
+
+export async function deleteFile(publicId,resourceType="image") {
+  try {
+    const response = await cloudinary.uploader.destroy(publicId,{resource_type:resourceType});
+    console.log('File deleted:', response);
+  } catch (error) {
+    console.error('Error deleting file:', error);
+  }
 }
 
 export default uploadOnCloudinary

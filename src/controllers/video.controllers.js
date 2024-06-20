@@ -5,6 +5,8 @@ import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
 import uploadOnCloudinary from "../utils/cloudinary.js"
+import { deleteFile } from "../utils/cloudinary.js"
+
 
  //TODO: get all videos of a user based on query, sort, pagination
 const getAllVideos = asyncHandler(async (req, res) => {
@@ -187,8 +189,89 @@ return  res.status(200).json(new ApiResponse(200,videoAggregatePaginate,"video a
 
 )
 const publishAVideo = asyncHandler(async (req, res) => {
-    const { title, description} = req.body
+    
     // TODO: get video, upload to cloudinary, create video
+
+ try {
+       const { title, description} = req.body
+
+       //yeh jo multer upload se aari 
+console.log("1")
+
+       const video=req.files?.videoFile?.[0]?.path
+       const thumbnail=req.files?.thumbnail?.[0]?.path
+
+       if(!video || !thumbnail){
+        throw new ApiError(404,"Error while obtaining video or thumbail")
+       }
+
+    const videoUploaded=await uploadOnCloudinary(video)
+    const thumbailUploaded=await uploadOnCloudinary(thumbnail)
+
+    
+//todo-duration of video from 
+
+
+
+if(!videoUploaded || !thumbailUploaded){
+
+    throw new ApiError(500,"Error while uploading video or thumbail on Cloudinary")
+
+}
+
+//console.log(videoUploaded)
+//console.log(videoUploaded.public_id)
+
+
+
+
+
+
+const videoReturned=await Video.create({
+
+videoFile:videoUploaded.url,
+thumbnail:thumbailUploaded.url,
+owner:req.user._id,
+title,
+description,
+duration:videoUploaded.duration,
+isPublished:true,
+views:0,
+})
+
+
+
+
+if(!videoReturned){
+    throw new ApiError(500,"Error while uploading video")
+}
+
+const createdVideo=await Video.findById(videoReturned._id)
+
+
+if(!createdVideo){
+    throw new ApiError(500,'Not able to upload video')
+}
+
+return res.status(200).json(
+new ApiResponse(200,
+    videoReturned,"Video Published Successfully"
+)
+)
+
+
+
+    
+
+
+
+ } catch (error) {
+     console.log("Caught error",error)
+ }
+
+
+
+
 })
 
 const getVideoById = asyncHandler(async (req, res) => {
